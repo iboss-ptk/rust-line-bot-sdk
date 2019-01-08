@@ -15,6 +15,11 @@ pub enum Message {
         id: String,
         content_provider: ContentProvider,
     },
+    #[serde(rename = "video", rename_all = "camelCase")]
+    Video {
+        id: String,
+        content_provider: ContentProvider,
+    },
     #[serde(rename = "sticker", rename_all = "camelCase")]
     Sticker {
         id: String,
@@ -102,6 +107,26 @@ mod test {
                 },
             });
         }
+
+        #[test]
+        fn test_deserialize_video_message_from_line() {
+            let json = r#"
+            {
+                "id": "325708",
+                "type": "video",
+                "contentProvider": {
+                    "type": "line"
+                }
+            }
+        "#;
+            let res: Message = serde_json::from_str(json).expect("not formatted properly");
+
+            assert_eq!(res, Message::Video {
+                id: String::from("325708"),
+                content_provider: ContentProvider::Line,
+            });
+        }
+
 
         #[test]
         fn test_deserialize_sticker_message() {
