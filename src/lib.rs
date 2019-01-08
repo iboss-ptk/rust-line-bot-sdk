@@ -2,6 +2,8 @@
 extern crate serde_derive;
 extern crate serde_json;
 
+use serde_json::Number;
+
 #[derive(Deserialize, Debug, PartialEq)]
 #[serde(tag = "type")]
 pub enum Message {
@@ -18,20 +20,28 @@ pub enum Message {
     #[serde(rename = "video", rename_all = "camelCase")]
     Video {
         id: String,
-        duration: u64,
+        duration: Number,
         content_provider: ContentProvider,
     },
     #[serde(rename = "audio", rename_all = "camelCase")]
     Audio {
         id: String,
-        duration: u64,
+        duration: Number,
         content_provider: ContentProvider,
     },
     #[serde(rename = "file", rename_all = "camelCase")]
     File {
         id: String,
         file_name: String,
-        file_size: u64,
+        file_size: Number,
+    },
+    #[serde(rename = "location", rename_all = "camelCase")]
+    Location {
+        id: String,
+        title: String,
+        address: String,
+        latitude: Number,
+        longitude: Number,
     },
     #[serde(rename = "sticker", rename_all = "camelCase")]
     Sticker {
@@ -137,7 +147,7 @@ mod test {
 
             assert_eq!(res, Message::Video {
                 id: String::from("325708"),
-                duration: 60000,
+                duration: 60000.into(),
                 content_provider: ContentProvider::Line,
             });
         }
@@ -158,7 +168,7 @@ mod test {
 
             assert_eq!(res, Message::Audio {
                 id: String::from("325708"),
-                duration: 60000,
+                duration: 60000.into(),
                 content_provider: ContentProvider::Line,
             });
         }
@@ -179,7 +189,30 @@ mod test {
             assert_eq!(res, Message::File {
                 id: String::from("325708"),
                 file_name: String::from("file.txt"),
-                file_size: 2138,
+                file_size: 2138.into(),
+            });
+        }
+
+        #[test]
+        fn test_deserialize_location_message() {
+            let json = r#"
+            {
+                "id": "325708",
+                "type": "location",
+                "title": "my location",
+                "address": "〒150-0002 東京都渋谷区渋谷２丁目２１−１",
+                "latitude": 35.65910807942215,
+                "longitude": 139.70372892916203
+            }
+            "#;
+            let res: Message = serde_json::from_str(json).expect("not formatted properly");
+
+            assert_eq!(res, Message::Location {
+                id: String::from("325708"),
+                title: String::from("my location"),
+                address: String::from("〒150-0002 東京都渋谷区渋谷２丁目２１−１"),
+                latitude: Number::from_f64(35.65910807942215).unwrap(),
+                longitude: Number::from_f64(139.70372892916203).unwrap(),
             });
         }
 
