@@ -18,6 +18,7 @@ pub enum Message {
     #[serde(rename = "video", rename_all = "camelCase")]
     Video {
         id: String,
+        duration: u64,
         content_provider: ContentProvider,
     },
     #[serde(rename = "audio", rename_all = "camelCase")]
@@ -25,6 +26,12 @@ pub enum Message {
         id: String,
         duration: u64,
         content_provider: ContentProvider,
+    },
+    #[serde(rename = "file", rename_all = "camelCase")]
+    File {
+        id: String,
+        file_name: String,
+        file_size: u64,
     },
     #[serde(rename = "sticker", rename_all = "camelCase")]
     Sticker {
@@ -62,7 +69,7 @@ mod test {
                 "type": "text",
                 "text": "Hello, world!"
             }
-        "#;
+            "#;
             let res: Message = serde_json::from_str(json).expect("not formatted properly");
 
             assert_eq!(res, Message::Text {
@@ -81,7 +88,7 @@ mod test {
                     "type": "line"
                 }
             }
-        "#;
+            "#;
             let res: Message = serde_json::from_str(json).expect("not formatted properly");
 
             assert_eq!(res, Message::Image {
@@ -102,7 +109,7 @@ mod test {
                     "previewImageUrl": "https://path.to/preview"
                 }
             }
-        "#;
+            "#;
             let res: Message = serde_json::from_str(json).expect("not formatted properly");
 
             assert_eq!(res, Message::Image {
@@ -120,15 +127,17 @@ mod test {
             {
                 "id": "325708",
                 "type": "video",
+                "duration": 60000,
                 "contentProvider": {
                     "type": "line"
                 }
             }
-        "#;
+            "#;
             let res: Message = serde_json::from_str(json).expect("not formatted properly");
 
             assert_eq!(res, Message::Video {
                 id: String::from("325708"),
+                duration: 60000,
                 content_provider: ContentProvider::Line,
             });
         }
@@ -144,13 +153,33 @@ mod test {
                     "type": "line"
                 }
             }
-        "#;
+            "#;
             let res: Message = serde_json::from_str(json).expect("not formatted properly");
 
             assert_eq!(res, Message::Audio {
                 id: String::from("325708"),
                 duration: 60000,
                 content_provider: ContentProvider::Line,
+            });
+        }
+
+
+        #[test]
+        fn test_deserialize_file_message() {
+            let json = r#"
+            {
+                "id": "325708",
+                "type": "file",
+                "fileName": "file.txt",
+                "fileSize": 2138
+            }
+            "#;
+            let res: Message = serde_json::from_str(json).expect("not formatted properly");
+
+            assert_eq!(res, Message::File {
+                id: String::from("325708"),
+                file_name: String::from("file.txt"),
+                file_size: 2138,
             });
         }
 
@@ -163,7 +192,7 @@ mod test {
                 "packageId": "1",
                 "stickerId": "2"
             }
-        "#;
+            "#;
             let res: Message = serde_json::from_str(json).expect("not formatted properly");
 
             assert_eq!(res, Message::Sticker {
