@@ -3,14 +3,9 @@ extern crate actix_web;
 #[macro_use]
 extern crate serde_derive;
 
-use actix_web::{App, error, http, HttpMessage, HttpRequest, HttpResponse, Json, Result, server, State};
-use std::env;
-use std::sync::Arc;
-use actix_web::FromRequest;
-use std::process;
-use serde_json::Number;
-use rust_line_bot_sdk::event::*;
-use rust_line_bot_sdk::event::message::*;
+use actix_web::{App, error, http, Json, Result, server, State};
+use rust_line_bot_sdk::event::message::{Message};
+use rust_line_bot_sdk::event::{Events, Event};
 
 // ===== reply =====
 #[derive(Serialize, Debug)]
@@ -40,13 +35,12 @@ fn webhook(events: Json<Events>, config: State<Config>) -> Result<String> {
     for event in events.events.iter() {
         let body = match event {
             Event::Message { reply_token, message, .. } => {
-                let idc = String::from("i don't care");
                 let s = String::from("av");
                 let m = match message {
                     Message::Text { text, .. } => text,
                     Message::Image { id, .. } => id,
-                    Message::Video { duration, .. } => &s,
-                    Message::Audio { duration, .. } => &s,
+                    Message::Video { .. } => &s,
+                    Message::Audio { .. } => &s,
                     Message::File { file_name, .. } => file_name,
                     Message::Location { title, .. } => title,
                     Message::Sticker { sticker_id , .. } => sticker_id,
@@ -97,7 +91,7 @@ fn main() {
         App::with_state(Config { channel_secret_token: secret.clone() })
             .resource("/webhook", |r|
                 r.method(http::Method::POST).with_config(webhook, |cfg| {
-                    cfg.0.error_handler(|err, req| {
+                    cfg.0.error_handler(|err, _req| {
                         eprintln!("err :: {}", err);
                         error::ErrorBadRequest(err)
                     });
