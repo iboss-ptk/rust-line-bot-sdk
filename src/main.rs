@@ -1,3 +1,4 @@
+extern crate rust_line_bot_sdk;
 extern crate actix_web;
 #[macro_use]
 extern crate serde_derive;
@@ -6,25 +7,10 @@ use actix_web::{App, error, http, HttpMessage, HttpRequest, HttpResponse, Json, 
 use std::env;
 use std::sync::Arc;
 use actix_web::FromRequest;
-use rust_line_bot_sdk::*;
-
-#[derive(Deserialize, Debug)]
-struct Events {
-    events: Vec<Event>,
-}
-
-#[derive(Deserialize, Debug)]
-#[serde(untagged)]
-enum Event {
-    #[serde(rename_all = "camelCase")]
-    Message {
-        reply_token: String,
-        timestamp: u64,
-        message: Message,
-    }
-}
-
-
+use std::process;
+use serde_json::Number;
+use rust_line_bot_sdk::event::*;
+use rust_line_bot_sdk::event::message::*;
 
 // ===== reply =====
 #[derive(Serialize, Debug)]
@@ -53,14 +39,27 @@ fn webhook(events: Json<Events>, config: State<Config>) -> Result<String> {
     let client = reqwest::Client::new();
     for event in events.events.iter() {
         let body = match event {
-            Event::Message { reply_token, .. } => Reply {
-                reply_token: reply_token.clone(),
-                messages: vec![
-                    ReplyMessage {
-                        event_type: String::from("text"),
-                        text: Some(String::from("hello")),
-                    },
-                ],
+            Event::Message { reply_token, message, .. } => {
+                let idc = String::from("i don't care");
+                let s = String::from("av");
+                let m = match message {
+                    Message::Text { text, .. } => text,
+                    Message::Image { id, .. } => id,
+                    Message::Video { duration, .. } => &s,
+                    Message::Audio { duration, .. } => &s,
+                    Message::File { file_name, .. } => file_name,
+                    Message::Location { title, .. } => title,
+                    Message::Sticker { sticker_id , .. } => sticker_id,
+                };
+                Reply {
+                    reply_token: reply_token.clone(),
+                    messages: vec![
+                        ReplyMessage {
+                            event_type: String::from("text"),
+                            text: Some(format!("hello, {}", m)),
+                        },
+                    ],
+                }
             },
         };
 
