@@ -20,6 +20,12 @@ pub enum Message {
         id: String,
         content_provider: ContentProvider,
     },
+    #[serde(rename = "audio", rename_all = "camelCase")]
+    Audio {
+        id: String,
+        duration: u64,
+        content_provider: ContentProvider,
+    },
     #[serde(rename = "sticker", rename_all = "camelCase")]
     Sticker {
         id: String,
@@ -127,6 +133,26 @@ mod test {
             });
         }
 
+        #[test]
+        fn test_deserialize_audio_message_from_line() {
+            let json = r#"
+            {
+                "id": "325708",
+                "type": "audio",
+                "duration": 60000,
+                "contentProvider": {
+                    "type": "line"
+                }
+            }
+        "#;
+            let res: Message = serde_json::from_str(json).expect("not formatted properly");
+
+            assert_eq!(res, Message::Audio {
+                id: String::from("325708"),
+                duration: 60000,
+                content_provider: ContentProvider::Line,
+            });
+        }
 
         #[test]
         fn test_deserialize_sticker_message() {
