@@ -1152,7 +1152,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rust-line-bot-sdk"
+name = "rust_line_bot_sdk"
 version = "0.1.0"
 dependencies = [
  "actix-web 0.7.17 (registry+https://github.com/rust-lang/crates.io-index)",

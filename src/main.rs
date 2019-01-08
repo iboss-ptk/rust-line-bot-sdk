@@ -2,28 +2,36 @@ extern crate actix_web;
 #[macro_use]
 extern crate serde_derive;
 
-use actix_web::{App, error, http, HttpMessage, HttpRequest, HttpResponse, Json, Result, State, server};
+use actix_web::{App, error, http, HttpMessage, HttpRequest, HttpResponse, Json, Result, server, State};
 use std::env;
 use std::sync::Arc;
-
-#[derive(Deserialize, Debug)]
-struct Message {
-    id: String,
-    #[serde(rename = "type")]
-    event_type: String,
-    text: Option<String>,
-}
-
-#[derive(Deserialize, Debug)]
-struct MessageEvent {
-    #[serde(rename = "replyToken")]
-    reply_token: String,
-    message: Message,
-}
+use actix_web::FromRequest;
+use rust_line_bot_sdk::*;
 
 #[derive(Deserialize, Debug)]
 struct Events {
-    events: Vec<MessageEvent>,
+    events: Vec<Event>,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+enum Event {
+    #[serde(rename_all = "camelCase")]
+    Message {
+        reply_token: String,
+        timestamp: u64,
+        message: Message,
+    }
+}
+
+
+
+// ===== reply =====
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+struct Reply {
+    reply_token: String,
+    messages: Vec<ReplyMessage>,
 }
 
 #[derive(Serialize, Debug)]
@@ -33,29 +41,30 @@ struct ReplyMessage {
     text: Option<String>,
 }
 
-#[derive(Serialize, Debug)]
-struct Reply {
-    #[serde(rename = "replyToken")]
-    reply_token: String,
-    messages: Vec<ReplyMessage>,
+
+fn _webhook(events: String, _config: State<Config>) -> Result<String> {
+    println!("raw :: {}", events);
+    Ok("".to_string())
 }
 
 fn webhook(events: Json<Events>, config: State<Config>) -> Result<String> {
-    println!("{:?}", events);
+    println!("Event :: {:#?}", events);
 
     let client = reqwest::Client::new();
     for event in events.events.iter() {
-        let body = Reply {
-            reply_token: event.reply_token.clone(),
-            messages: vec![
-                ReplyMessage {
-                    event_type: String::from("text"),
-                    text: Some(String::from("hello")),
-                },
-            ],
+        let body = match event {
+            Event::Message { reply_token, .. } => Reply {
+                reply_token: reply_token.clone(),
+                messages: vec![
+                    ReplyMessage {
+                        event_type: String::from("text"),
+                        text: Some(String::from("hello")),
+                    },
+                ],
+            },
         };
 
-        println!("body: {}", serde_json::to_string(&body).unwrap());
+        println!("Reply :: {:#?}", &body);
 
         let reply_url = "https://api.line.me/v2/bot/message/reply";
 
@@ -65,7 +74,7 @@ fn webhook(events: Json<Events>, config: State<Config>) -> Result<String> {
             .bearer_auth(config.channel_secret_token.to_string())
             .send();
 
-        println!("result {:?}", res);
+        println!("Result {:#?}", res);
     }
 
     Ok(String::from("ok"))
@@ -81,13 +90,19 @@ struct Config {
     channel_secret_token: String,
 }
 
+
 fn main() {
     let secret = get_secret();
 
     server::new(move || {
         App::with_state(Config { channel_secret_token: secret.clone() })
             .resource("/webhook", |r|
-                r.method(http::Method::POST).with(webhook))
+                r.method(http::Method::POST).with_config(webhook, |cfg| {
+                    cfg.0.error_handler(|err, req| {
+                        eprintln!("err :: {}", err);
+                        error::ErrorBadRequest(err)
+                    });
+                }))
     })
         .bind("127.0.0.1:8088")
         .unwrap()
