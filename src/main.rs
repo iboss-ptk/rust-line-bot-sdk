@@ -6,21 +6,8 @@ extern crate serde_derive;
 use actix_web::{App, error, http, Json, Result, server, State};
 use rust_line_bot_sdk::event::message::{Message};
 use rust_line_bot_sdk::event::{Events, Event};
+use rust_line_bot_sdk::{LineBot};
 
-// ===== reply =====
-#[derive(Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-struct Reply {
-    reply_token: String,
-    messages: Vec<ReplyMessage>,
-}
-
-#[derive(Serialize, Debug)]
-struct ReplyMessage {
-    #[serde(rename = "type")]
-    event_type: String,
-    text: Option<String>,
-}
 
 
 fn _webhook(events: String, _config: State<Config>) -> Result<String> {
@@ -32,11 +19,13 @@ fn webhook(events: Json<Events>, config: State<Config>) -> Result<String> {
     println!("Event :: {:#?}", events);
 
     let client = reqwest::Client::new();
+    let line_bot = LineBot::new(config.channel_secret_token.as_str());
+
     for event in events.events.iter() {
-        let body = match event {
+        let res = match event {
             Event::Message { reply_token, message, .. } => {
                 let s = String::from("av");
-                let m = match message {
+                let text= match message {
                     Message::Text { text, .. } => text,
                     Message::Image { id, .. } => id,
                     Message::Video { .. } => &s,
@@ -45,27 +34,13 @@ fn webhook(events: Json<Events>, config: State<Config>) -> Result<String> {
                     Message::Location { title, .. } => title,
                     Message::Sticker { sticker_id , .. } => sticker_id,
                 };
-                Reply {
-                    reply_token: reply_token.clone(),
-                    messages: vec![
-                        ReplyMessage {
-                            event_type: String::from("text"),
-                            text: Some(format!("hello, {}", m)),
-                        },
-                    ],
-                }
-            },
+
+                println!("Reply :: {}", text);
+
+                line_bot
+                    .reply_text(reply_token, vec![text.as_str()])
+            }
         };
-
-        println!("Reply :: {:#?}", &body);
-
-        let reply_url = "https://api.line.me/v2/bot/message/reply";
-
-        let res = client
-            .post(reply_url)
-            .json(&body)
-            .bearer_auth(config.channel_secret_token.to_string())
-            .send();
 
         println!("Result {:#?}", res);
     }
